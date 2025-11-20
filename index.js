@@ -83,7 +83,7 @@ app.get('/auth/login', (req, res) => {
     client_key: process.env.TIKTOK_CLIENT_KEY,
     redirect_uri: process.env.TIKTOK_REDIRECT_URI,
     response_type: 'code',
-    scope: 'user.info.basic,user.info.profile,user.info.stats,video.publish,video.upload',
+    scope: 'user.info.basic,video.publish,video.upload',
     state: 'secureRandomState123', // optional
     code_challenge: pkce.challenge,
     code_challenge_method: 'S256'
@@ -139,16 +139,72 @@ app.get('/auth/callback', async (req, res) => {
     codeVerifier = null;
 
     res.send(`
-      <h1>✅ Login Successful!</h1>
-      <p>Tokens acquired and stored securely.</p>
-      <h2>Available Endpoints:</h2>
-      <ul>
-        <li><a href="/creator-info">Creator Info</a> - Get your TikTok profile info</li>
-        <li><a href="/user/info?fields=open_id,union_id,avatar_url,display_name,bio_description">User Info</a> - Get your TikTok user info</li>
-        <li><a href="/health">Health Check</a> - Server status</li>
-      </ul>
-      <h3>API Usage:</h3>
-      <pre>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 20px; }
+          .token-box {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+          }
+          .token-value {
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+            background: white;
+            padding: 10px;
+            border-radius: 3px;
+            margin-top: 5px;
+          }
+          button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-top: 5px;
+          }
+          button:hover { background: #45a049; }
+          .copy-success { color: #4CAF50; margin-left: 10px; display: none; }
+        </style>
+      </head>
+      <body>
+        <h1>✅ Login Successful!</h1>
+        <p>Tokens acquired and stored securely.</p>
+
+        <div class="token-box">
+          <h3>🔑 Access Token:</h3>
+          <div class="token-value" id="accessToken">${access_token}</div>
+          <button onclick="copyToken('accessToken', 'accessSuccess')">Copy Access Token</button>
+          <span class="copy-success" id="accessSuccess">✓ Copied!</span>
+        </div>
+
+        <div class="token-box">
+          <h3>🔄 Refresh Token:</h3>
+          <div class="token-value" id="refreshToken">${refresh_token}</div>
+          <button onclick="copyToken('refreshToken', 'refreshSuccess')">Copy Refresh Token</button>
+          <span class="copy-success" id="refreshSuccess">✓ Copied!</span>
+        </div>
+
+        <div class="token-box">
+          <h3>⏰ Expires In:</h3>
+          <p>${expires_in} seconds (${Math.floor(expires_in / 3600)} hours)</p>
+        </div>
+
+        <h2>Available Endpoints:</h2>
+        <ul>
+          <li><a href="/creator-info">Creator Info</a> - Get your TikTok profile info</li>
+          <li><a href="/user/info?fields=open_id,union_id,avatar_url,display_name,bio_description">User Info</a> - Get your TikTok user info</li>
+          <li><a href="/health">Health Check</a> - Server status</li>
+        </ul>
+
+        <h3>API Usage:</h3>
+        <pre>
 POST /video/direct-post
 {
   "file_path": "/path/to/video.mp4",
@@ -156,7 +212,22 @@ POST /video/direct-post
 }
 
 GET /video/status?publish_id=YOUR_PUBLISH_ID
-      </pre>
+        </pre>
+
+        <script>
+          function copyToken(elementId, successId) {
+            const text = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(text).then(() => {
+              const successMsg = document.getElementById(successId);
+              successMsg.style.display = 'inline';
+              setTimeout(() => {
+                successMsg.style.display = 'none';
+              }, 2000);
+            });
+          }
+        </script>
+      </body>
+      </html>
     `);
   } catch (err) {
     console.error('Token exchange error:', err.response?.data || err.message);
@@ -273,7 +344,7 @@ app.post('/video/direct-post', async (req, res) => {
     const initResponse = await axios.post('https://open.tiktokapis.com/v2/post/publish/video/init/', {
       post_info: {
         title: title,
-        privacy_level: 'PUBLIC_TO_EVERYONE',
+        privacy_level: process.env.PRIVACY_LEVEL || 'SELF_ONLY', // Configurable via .env
         disable_duet: false,
         disable_comment: false,
         disable_stitch: false,
