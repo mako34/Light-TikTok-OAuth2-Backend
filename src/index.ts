@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 8888;
+const PORT = Number(process.env.PORT) || 8888;
 
 // Middleware
 app.use(express.json());
@@ -35,7 +35,8 @@ app.get('/', (req: Request, res: Response) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-  console.log(`📍 Hello World: http://localhost:${PORT}/hello`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📍 Local: http://localhost:${PORT}`);
+  console.log(`📍 VM: http://38.242.141.70:${PORT}`);
 });
