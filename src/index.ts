@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import session from 'express-session';
+import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import axios from 'axios';
 import qs from 'querystring';
@@ -43,6 +44,29 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   );
   next();
 });
+
+// ===== Rate Limiting =====
+
+// Global rate limiter - 100 requests per 15 minutes
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
+  legacyHeaders: false, // Disable `X-RateLimit-*` headers
+});
+
+// Strict limiter for auth endpoints - 5 attempts per 15 minutes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 auth attempts per windowMs
+  message: { error: 'Too many authentication attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply global rate limiter to all routes
+app.use(globalLimiter);
 
 // ===== API Authentication =====
 
@@ -159,7 +183,7 @@ app.get('/', (req: Request, res: Response) => {
 // ===== OAuth Flow Endpoints =====
 
 // 1. Redirect user to TikTok auth page with PKCE
-app.get('/auth/login', (req: Request, res: Response) => {
+app.get('/auth/login', authLimiter, (req: Request, res: Response) => {
   // Generate PKCE code verifier and challenge
   const pkce = generatePKCE();
   req.session.codeVerifier = pkce.verifier; // Store in session for later use in callback
@@ -179,7 +203,7 @@ app.get('/auth/login', (req: Request, res: Response) => {
 });
 
 // 2. Callback endpoint to handle TikTok redirect with PKCE
-app.get('/auth/callback', async (req: Request, res: Response) => {
+app.get('/auth/callback', authLimiter, async (req: Request, res: Response) => {
   const code = req.query.code as string;
   if (!code) {
     return res.status(400).send('Missing code');
