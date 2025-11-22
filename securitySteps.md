@@ -33,9 +33,9 @@ sudo certbot renew --dry-run
 **Priority: CRITICAL**
 **Location: index.js:141-231**
 
-- [ ] Remove access_token and refresh_token from HTML response
-- [ ] Show only success message
-- [ ] Store tokens server-side only
+- [x] Remove access_token and refresh_token from HTML response
+- [x] Show only success message
+- [x] Store tokens server-side only
 
 **Why**: Exposing tokens in browser HTML is a major security vulnerability. Tokens can be stolen via XSS or browser history.
 

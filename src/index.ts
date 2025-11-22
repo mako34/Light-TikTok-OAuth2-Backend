@@ -109,6 +109,7 @@ app.get('/', (req: Request, res: Response) => {
     endpoints: {
       auth: '/auth/login',
       callback: '/auth/callback',
+      logout: '/auth/logout',
       creator_info: '/creator-info',
       user_info: '/user/info',
       video_direct_post: '/video/direct-post',
@@ -241,6 +242,46 @@ GET /video/status?publish_id=YOUR_PUBLISH_ID
   } catch (err: any) {
     console.error('❌ Token exchange error:', err.response?.data || err.message);
     res.status(500).send('Token exchange failed');
+  }
+});
+
+// 3. Logout endpoint - clears stored tokens
+app.get('/auth/logout', (req: Request, res: Response) => {
+  const tokensCleared = tokenStorage.clearTokens();
+
+  if (tokensCleared) {
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+          .success { color: #4CAF50; font-size: 24px; }
+          h1 { color: #333; }
+          .info-box {
+            background: #f0f8ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #4CAF50;
+          }
+          a { color: #4CAF50; text-decoration: none; }
+          a:hover { text-decoration: underline; }
+        </style>
+      </head>
+      <body>
+        <h1 class="success">✅ Logged Out Successfully!</h1>
+        <div class="info-box">
+          <p>Your authentication tokens have been cleared from the server.</p>
+          <p>You are now logged out of TikTok.</p>
+        </div>
+        <p><a href="/auth/login">Click here to login again</a></p>
+      </body>
+      </html>
+    `);
+    console.log('🔓 User logged out - tokens cleared');
+  } else {
+    res.status(500).send('Failed to clear tokens');
   }
 });
 
