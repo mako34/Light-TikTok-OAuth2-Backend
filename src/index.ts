@@ -24,6 +24,25 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+// ===== API Authentication =====
+
+// Parse API keys from environment variable (comma-separated)
+const API_KEYS = new Set((process.env.API_KEYS || '').split(',').filter(k => k.trim()));
+
+// API key authentication middleware
+function requireApiKey(req: Request, res: Response, next: NextFunction) {
+  const apiKey = req.headers['x-api-key'] as string || req.query.api_key as string;
+
+  if (!apiKey || !API_KEYS.has(apiKey)) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Valid API key required. Include X-API-Key header or api_key query parameter.'
+    });
+  }
+
+  next();
+}
+
 // Initialize secure storage with encryption key from environment
 const tokenStorage = new SecureTokenStorage(process.env.ENCRYPTION_KEY);
 
@@ -288,7 +307,7 @@ app.get('/auth/logout', (req: Request, res: Response) => {
 // ===== TikTok API Endpoints =====
 
 // Get creator info
-app.get('/creator-info', async (req: Request, res: Response) => {
+app.get('/creator-info', requireApiKey, async (req: Request, res: Response) => {
   try {
     const access_token = await getValidAccessToken();
 
@@ -307,7 +326,7 @@ app.get('/creator-info', async (req: Request, res: Response) => {
 });
 
 // Get user info - accepts fields from client and forwards to TikTok
-app.get('/user/info', async (req: Request, res: Response) => {
+app.get('/user/info', requireApiKey, async (req: Request, res: Response) => {
   try {
     const access_token = await getValidAccessToken();
     const { fields } = req.query;
@@ -336,7 +355,7 @@ app.get('/user/info', async (req: Request, res: Response) => {
 });
 
 // Video upload API - direct post with file path and title
-app.post('/video/direct-post', async (req: Request, res: Response) => {
+app.post('/video/direct-post', requireApiKey, async (req: Request, res: Response) => {
   try {
     const access_token = await getValidAccessToken();
     const { file_path, title } = req.body;
@@ -449,7 +468,7 @@ app.post('/video/direct-post', async (req: Request, res: Response) => {
 });
 
 // Check video upload status
-app.get('/video/status', async (req: Request, res: Response) => {
+app.get('/video/status', requireApiKey, async (req: Request, res: Response) => {
   try {
     const access_token = await getValidAccessToken();
     const { publish_id } = req.query;
@@ -479,7 +498,7 @@ app.get('/video/status', async (req: Request, res: Response) => {
 });
 
 // Video upload to inbox API - uploads to TikTok inbox for user to complete
-app.post('/video/upload', async (req: Request, res: Response) => {
+app.post('/video/upload', requireApiKey, async (req: Request, res: Response) => {
   try {
     const access_token = await getValidAccessToken();
     const { file_path } = req.body;
