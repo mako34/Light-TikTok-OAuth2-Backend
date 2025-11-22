@@ -1,3 +1,13 @@
+Usage
+
+# Build TypeScript
+  npm run build
+
+# Run server
+  npm run dev
+
+
+
 # 🚀 Light weight TikTok OAuth2 Server 
 [![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -23,6 +33,7 @@ I created this mostly to workaround the issue of n8n TikTok OAuth2 flow not work
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/auth/login` | GET | One time OAuth2 flow (thru TikTok) |
+| `/auth/logout` | GET | Logout and clear tokens |
 | `/auth/callback` | GET | OAuth2 callback handler |
 | `/creator-info` | GET | Get TikTok creator information |
 | `/user/info` | GET | Get user information with specified fields |

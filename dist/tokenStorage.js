@@ -7,11 +7,16 @@ const fs_1 = __importDefault(require("fs"));
 const crypto_1 = __importDefault(require("crypto"));
 class SecureTokenStorage {
     constructor(encryptionKey, filePath = './tokens.encrypted.json') {
-        this.encryptionKey = encryptionKey || this.generateEncryptionKey();
         this.filePath = filePath;
-        // Ensure the encryption key is at least 32 bytes for AES-256
-        if (this.encryptionKey.length < 32) {
-            this.encryptionKey = crypto_1.default.scryptSync(this.encryptionKey, 'salt', 32).toString('hex');
+        // Generate or use provided key
+        const providedKey = encryptionKey || this.generateEncryptionKey();
+        // Ensure the encryption key is exactly 32 bytes (64 hex chars) for AES-256
+        if (providedKey.length < 64) {
+            // Derive a proper 32-byte key using scrypt
+            this.encryptionKey = crypto_1.default.scryptSync(providedKey, 'salt', 32).toString('hex');
+        }
+        else {
+            this.encryptionKey = providedKey;
         }
     }
     // Generate a random encryption key if none provided
