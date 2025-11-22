@@ -9,6 +9,15 @@ const PORT = Number(process.env.PORT) || 8888;
 // Middleware
 app.use(express.json());
 
+// Security: Enable HSTS (HTTP Strict Transport Security)
+app.use((req: Request, res: Response, next) => {
+  res.setHeader(
+    'Strict-Transport-Security',
+    'max-age=31536000; includeSubDomains; preload'
+  );
+  next();
+});
+
 // Hello World endpoint
 app.get('/hello', (req: Request, res: Response) => {
   res.json({
