@@ -349,14 +349,32 @@ app.post('/video/direct-post', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'title is required' });
     }
 
-    // Check if file exists
-    if (!fs.existsSync(file_path)) {
-      return res.status(400).json({ error: 'File not found at specified path' });
+    // Check if file_path is a URL or local path
+    const isUrl = file_path.startsWith('http://') || file_path.startsWith('https://');
+    let videoBuffer: Buffer;
+    let fileSize: number;
+
+    if (isUrl) {
+      // Download file from URL
+      console.log('📥 Downloading video from URL:', file_path);
+      const videoResponse = await axios.get(file_path, {
+        responseType: 'arraybuffer',
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity
+      });
+      videoBuffer = Buffer.from(videoResponse.data);
+      fileSize = videoBuffer.length;
+      console.log('✅ Video downloaded, size:', fileSize, 'bytes');
+    } else {
+      // Read from local file path
+      if (!fs.existsSync(file_path)) {
+        return res.status(400).json({ error: 'File not found at specified path' });
+      }
+      const stats = fs.statSync(file_path);
+      fileSize = stats.size;
+      videoBuffer = fs.readFileSync(file_path);
     }
 
-    // Get file stats
-    const stats = fs.statSync(file_path);
-    const fileSize = stats.size;
     const chunkSize = (fileSize < 10 * 1024 * 1024) ? fileSize : 10 * 1024 * 1024; // 10MB chunks
     const totalChunkCount = Math.ceil(fileSize / chunkSize);
 
@@ -392,8 +410,7 @@ app.post('/video/direct-post', async (req: Request, res: Response) => {
     console.log('✅ Upload initialized:', { publish_id, upload_url });
 
     // Step 2: Upload video file to TikTok's designated URL
-    console.log('📤 Uploading video file...');
-    const videoBuffer = fs.readFileSync(file_path);
+    console.log('📤 Uploading video file to TikTok...');
 
     await axios.put(upload_url, videoBuffer, {
       headers: {
@@ -471,19 +488,37 @@ app.post('/video/upload', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'file_path is required' });
     }
 
-    // Check if file exists
-    if (!fs.existsSync(file_path)) {
-      return res.status(400).json({ error: 'File not found at specified path' });
+    // Check if file_path is a URL or local path
+    const isUrl = file_path.startsWith('http://') || file_path.startsWith('https://');
+    let videoBuffer: Buffer;
+    let fileSize: number;
+
+    if (isUrl) {
+      // Download file from URL
+      console.log('📥 Downloading video from URL:', file_path);
+      const videoResponse = await axios.get(file_path, {
+        responseType: 'arraybuffer',
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity
+      });
+      videoBuffer = Buffer.from(videoResponse.data);
+      fileSize = videoBuffer.length;
+      console.log('✅ Video downloaded, size:', fileSize, 'bytes');
+    } else {
+      // Read from local file path
+      if (!fs.existsSync(file_path)) {
+        return res.status(400).json({ error: 'File not found at specified path' });
+      }
+      const stats = fs.statSync(file_path);
+      fileSize = stats.size;
+      videoBuffer = fs.readFileSync(file_path);
     }
 
-    // Get file stats
-    const stats = fs.statSync(file_path);
-    const fileSize = stats.size;
     const chunkSize = (fileSize < 10 * 1024 * 1024) ? fileSize : 10 * 1024 * 1024; // 10MB chunks
     const totalChunkCount = Math.ceil(fileSize / chunkSize);
 
     console.log('📤 Starting video upload to inbox...');
-    console.log('📁 File info:', { path: file_path, size: fileSize, size_mb: (fileSize / 1024 / 1024).toFixed(2) });
+    console.log('📁 File info:', { source: isUrl ? 'URL' : 'local', size: fileSize, size_mb: (fileSize / 1024 / 1024).toFixed(2) });
 
     // Step 1: Initialize video upload
     console.log('📤 Step 1: Initializing video upload...');
@@ -509,8 +544,7 @@ app.post('/video/upload', async (req: Request, res: Response) => {
     console.log('✅ Upload initialized:', { publish_id, upload_url });
 
     // Step 2: Upload video file to TikTok's designated URL
-    console.log('📤 Step 2: Uploading video file...');
-    const videoBuffer = fs.readFileSync(file_path);
+    console.log('📤 Step 2: Uploading video file to TikTok...');
 
     await axios.put(upload_url, videoBuffer, {
       headers: {
