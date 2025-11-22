@@ -1,4 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
+import session from 'express-session';
 import dotenv from 'dotenv';
 import axios from 'axios';
 import qs from 'querystring';
@@ -8,12 +9,31 @@ import SecureTokenStorage, { TokenData } from './tokenStorage';
 
 dotenv.config();
 
+// Extend session data type
+declare module 'express-session' {
+  interface SessionData {
+    codeVerifier: string;
+  }
+}
+
 const app = express();
 const PORT = Number(process.env.PORT) || 7777;
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Session middleware for PKCE code verifier storage
+app.use(session({
+  secret: process.env.SESSION_SECRET || process.env.ENCRYPTION_KEY || 'fallback-secret-change-me',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    httpOnly: true,
+    maxAge: 10 * 60 * 1000 // 10 minutes - enough time to complete OAuth flow
+  }
+}));
 
 // Security: Enable HSTS (HTTP Strict Transport Security)
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -45,9 +65,6 @@ function requireApiKey(req: Request, res: Response, next: NextFunction) {
 
 // Initialize secure storage with encryption key from environment
 const tokenStorage = new SecureTokenStorage(process.env.ENCRYPTION_KEY);
-
-// Store code verifier for PKCE flow (temporary - will be moved to session storage later)
-let codeVerifier: string | null = null;
 
 // ===== PKCE Utility Functions =====
 
@@ -145,7 +162,7 @@ app.get('/', (req: Request, res: Response) => {
 app.get('/auth/login', (req: Request, res: Response) => {
   // Generate PKCE code verifier and challenge
   const pkce = generatePKCE();
-  codeVerifier = pkce.verifier; // Store for later use in callback
+  req.session.codeVerifier = pkce.verifier; // Store in session for later use in callback
 
   const params = {
     client_key: process.env.TIKTOK_CLIENT_KEY!,
@@ -168,8 +185,8 @@ app.get('/auth/callback', async (req: Request, res: Response) => {
     return res.status(400).send('Missing code');
   }
 
-  if (!codeVerifier) {
-    return res.status(400).send('No code verifier found');
+  if (!req.session.codeVerifier) {
+    return res.status(400).send('No code verifier found. Session may have expired.');
   }
 
   try {
@@ -179,7 +196,7 @@ app.get('/auth/callback', async (req: Request, res: Response) => {
       code: code,
       grant_type: 'authorization_code',
       redirect_uri: process.env.TIKTOK_REDIRECT_URI!,
-      code_verifier: codeVerifier
+      code_verifier: req.session.codeVerifier
     });
 
     const tokenRes = await axios.post('https://open.tiktokapis.com/v2/oauth/token/', requestData, {
@@ -204,8 +221,8 @@ app.get('/auth/callback', async (req: Request, res: Response) => {
       expires_at: Date.now() + expires_in * 1000
     });
 
-    // Clear code verifier after successful token exchange
-    codeVerifier = null;
+    // Clear code verifier from session after successful token exchange
+    req.session.codeVerifier = undefined as any;
 
     // SECURITY FIX: Do NOT display tokens in browser
     // Only show success message and available endpoints
