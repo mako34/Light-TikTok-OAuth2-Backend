@@ -10,8 +10,8 @@ These MUST be implemented before deploying to production:
 
 - [ x] Obtain SSL certificate (Let's Encrypt recommended)
 - [ x] Configure nginx to enforce HTTPS
-- [ ] Redirect all HTTP traffic to HTTPS
-- [ ] Enable HSTS headers
+- [ x] Redirect all HTTP traffic to HTTPS
+- [ x] Enable HSTS headers
 
 **Why**: OAuth tokens transmitted over HTTP can be intercepted. TikTok requires HTTPS for production redirects.
 
